@@ -1,0 +1,26 @@
+FROM node:24-alpine
+
+# Install dependencies required by Prisma (OpenSSL) and general native modules
+RUN apk add --no-cache openssl libc6-compat
+
+WORKDIR /app
+
+# Copy dependency manifests first for Docker layer caching
+COPY package.json package-lock.json ./
+
+RUN npm ci
+
+# Copy prisma schema for client generation
+COPY prisma ./prisma
+
+# Create a non-root user for running the application
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+  && chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 3000
+
+# Generate Prisma client, apply migrations (safe for dev), then start dev server.
+# WARNING: prisma db push is for dev/prototyping only — use 'prisma migrate deploy' for production.
+CMD sh -c "npx prisma generate && npx prisma db push --skip-generate && npm run dev"

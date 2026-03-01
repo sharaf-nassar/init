@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --color-brand: hsl(280, 100%, 70%);
+  --color-brand-hover: hsl(280, 100%, 60%);
+}
