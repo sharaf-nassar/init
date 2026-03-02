@@ -77,6 +77,7 @@ This project uses maximum TypeScript strictness (`tsconfig.json`):
 - **Pre-push hook** runs `tsc --noEmit` for a full type check before pushing.
 - **Available scripts**: `npm run lint` (check only), `npm run lint:fix` (check + autofix), `npm run format` (format only).
 - **Key Biome rules enforced**: `noExplicitAny`, `noNonNullAssertion`, `noUnusedImports`, `noUnusedVariables`, `noDefaultExport` (with overrides for Next.js pages/layouts/routes/configs), `noShadowRestrictedNames` (with override for error.tsx).
+- **Formatting conventions**: 2-space indent, 100-char line width, double quotes, semicolons always, trailing commas everywhere.
 
 ### Prisma 7
 
@@ -100,6 +101,33 @@ This project uses maximum TypeScript strictness (`tsconfig.json`):
 ### Theming
 
 - **Brand colors are defined as Tailwind CSS custom properties** in `src/styles/globals.css` (`--color-brand`, `--color-brand-hover`). Use `text-brand`, `bg-brand`, `bg-brand-hover` etc. instead of hardcoded `hsl()` values.
+
+## Architecture Flow
+
+**Client → Server request lifecycle:**
+
+1. Client components call `api.post.getAll.useInfiniteQuery()` (from `~/trpc/react`)
+2. Request hits `src/app/api/trpc/[trpc]/route.ts` → `fetchRequestHandler`
+3. `createTRPCContext` in `src/server/api/trpc.ts` builds context: `{ db, session, headers }`
+4. Router in `src/server/api/root.ts` dispatches to the matching procedure in `src/server/api/routers/`
+5. `publicProcedure` runs timing middleware; `protectedProcedure` additionally checks `session.user.id`
+6. Procedure validates input with Zod, queries `db` (Prisma), returns typed response
+7. SuperJSON serializes the response; TanStack Query caches it client-side (30s stale time)
+
+**SSR prefetch flow (Server Components):**
+
+1. `src/app/page.tsx` imports `api` from `~/trpc/server` (RSC caller, not HTTP)
+2. Calls `api.post.getAll.prefetchInfinite(...)` — runs server-side, no network hop
+3. Wraps children in `<HydrateClient>` to dehydrate prefetched data into the HTML
+4. Client-side `useInfiniteQuery` picks up the hydrated data without refetching
+
+**Adding a new feature (common workflow):**
+
+1. **Schema**: Add model to `prisma/schema.prisma`, run `npx prisma db push`
+2. **Router**: Create `src/server/api/routers/<name>.ts`, export from `src/server/api/root.ts`
+3. **Client**: Use `api.<name>.<procedure>` hooks in `src/app/_components/`
+4. **Page**: Server components prefetch via `~/trpc/server`, wrap in `<HydrateClient>`
+5. **Env vars**: Add to `src/env.js` schema first, then reference via `env.<VAR>`
 
 ## Project Structure
 
