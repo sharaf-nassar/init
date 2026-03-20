@@ -1,5 +1,6 @@
 import { CreatePostForm } from "~/app/_components/create-post-form";
 import { PostList } from "~/app/_components/post-list";
+import { env } from "~/env";
 import { auth, signOut } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
 
@@ -15,7 +16,7 @@ export default async function Home() {
           </h1>
 
           <div className="flex flex-col items-center gap-4">
-            {session ? (
+            {session && !env.AUTH_DISABLED ? (
               <>
                 <p className="text-xl">
                   Signed in as{" "}
@@ -35,6 +36,12 @@ export default async function Home() {
                   </button>
                 </form>
               </>
+            ) : session ? (
+              <p className="text-xl">
+                Signed in as{" "}
+                <span className="font-semibold">{session.user.name ?? session.user.email}</span>
+                <span className="ml-2 text-sm text-white/50">(auth disabled)</span>
+              </p>
             ) : (
               <>
                 <p className="text-xl">Sign in to create posts</p>

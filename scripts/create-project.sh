@@ -90,6 +90,14 @@ if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z][a-zA-Z0-9_-]*$ ]]; then
   fail "Invalid project name '${PROJECT_NAME}'. Use alphanumeric characters, hyphens, and underscores. Must start with a letter."
 fi
 
+DB_NAME="$(printf '%s' "$PROJECT_NAME" \
+  | tr '[:upper:]' '[:lower:]' \
+  | sed -E 's/[^a-z0-9]+/_/g; s/_+/_/g; s/^_+//; s/_+$//')"
+
+if [ -z "$DB_NAME" ]; then
+  fail "Unable to derive a database name from '${PROJECT_NAME}'."
+fi
+
 if [ -d "$PROJECT_NAME" ]; then
   fail "Directory '${PROJECT_NAME}' already exists."
 fi
@@ -201,6 +209,9 @@ node -e "
   // Remove scripts/create-project.sh from Project Structure
   readme = readme.replace(/├── scripts\/create-project\.sh.*\n/, '');
 
+  // Update the default database name to match the generated project
+  readme = readme.replaceAll('t3app', '${DB_NAME}');
+
   fs.writeFileSync('README.md', readme);
 "
 ok "README.md tailored for ${PROJECT_NAME}"
@@ -217,6 +228,9 @@ node -e "
   // Remove scripts/ from Project Structure
   claude = claude.replace(/├── scripts\/\n│   └── create-project\.sh.*\n/, '');
 
+  // Update the default database name to match the generated project
+  claude = claude.replaceAll('t3app', '${DB_NAME}');
+
   // Update ports if customized
   if ('${WEB_PORT}' !== '3000') {
     claude = claude.replace(/127\.0\.0\.1:3000/g, '127.0.0.1:${WEB_PORT}');
@@ -232,6 +246,26 @@ ok "CLAUDE.md tailored for ${PROJECT_NAME}"
 # ── Remove template-only files ─────────────────────────────────────────────
 rm -rf scripts/
 ok "Removed template-only scripts/"
+
+# ── Configure project-specific names ─────────────────────────────────────────
+info "Configuring project-specific names..."
+node -e "
+  const fs = require('fs');
+  const dbName = '${DB_NAME}';
+
+  let envExample = fs.readFileSync('.env.example', 'utf8');
+  envExample = envExample.replace(/^POSTGRES_DB=.*$/m, 'POSTGRES_DB=' + dbName);
+  envExample = envExample.replace(
+    /^DATABASE_URL=.*$/m,
+    'DATABASE_URL=\"postgresql://your_db_user:your_strong_password_here@localhost:5432/' + dbName + '\"'
+  );
+  fs.writeFileSync('.env.example', envExample);
+
+  let dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
+  dockerCompose = dockerCompose.replaceAll('t3app', dbName);
+  fs.writeFileSync('docker-compose.yml', dockerCompose);
+"
+ok "Database name set to '${DB_NAME}'"
 
 # ── Configure ports ──────────────────────────────────────────────────────────
 if [ "$WEB_PORT" != "3000" ] || [ "$DB_PORT" != "5432" ]; then
@@ -267,6 +301,17 @@ AUTH_SECRET=$(openssl rand -base64 32)
 sed -i "s|^AUTH_SECRET=.*|AUTH_SECRET=\"${AUTH_SECRET}\"|" .env
 ok "Generated AUTH_SECRET"
 
+# ── Validate template placeholders were replaced ─────────────────────────────
+info "Validating generated project names..."
+if grep -RInI \
+  --exclude-dir=.git \
+  --exclude-dir=node_modules \
+  --exclude-dir=.next \
+  "t3app" . >/dev/null; then
+  fail "Found unreplaced 't3app' references in the generated project."
+fi
+ok "No unreplaced 't3app' references remain"
+
 # ── Initialize git ───────────────────────────────────────────────────────────
 info "Initializing git repository..."
 git init --quiet
@@ -280,7 +325,7 @@ ok "Dependencies installed"
 # ── Initial commit ───────────────────────────────────────────────────────────
 info "Creating initial commit..."
 git add -A
-git commit --quiet -m "chore: initialize project from T3 template"
+git commit --quiet -m "chore: initialize ${PROJECT_NAME} from template"
 ok "Initial commit created"
 
 # ── Done ─────────────────────────────────────────────────────────────────────
