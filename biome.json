@@ -28,7 +28,13 @@
       "recommended": true,
       "complexity": {
         "noExtraBooleanCast": "error",
-        "noUselessTypeConstraint": "error"
+        "noUselessTypeConstraint": "error",
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 15
+          }
+        }
       },
       "correctness": {
         "noUnusedImports": "error",
@@ -37,10 +43,24 @@
       "style": {
         "noNonNullAssertion": "error",
         "useConst": "error",
-        "noDefaultExport": "error"
+        "noDefaultExport": "error",
+        "noNestedTernary": "error",
+        "noParameterAssign": "error",
+        "useThrowOnlyError": "error"
       },
       "suspicious": {
-        "noExplicitAny": "error"
+        "noExplicitAny": "error",
+        "noConsole": "error",
+        "useAwait": "error",
+        "useErrorMessage": "error",
+        "noEvolvingTypes": "error",
+        "noImportCycles": "error"
+      },
+      "security": {
+        "noSecrets": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error"
       }
     }
   },
@@ -91,6 +111,26 @@
         "rules": {
           "suspicious": {
             "noShadowRestrictedNames": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/components/**"],
+      "linter": {
+        "rules": {
+          "security": {
+            "noSecrets": "off"
           }
         }
       }

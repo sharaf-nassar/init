@@ -42,7 +42,7 @@ export const postRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.post.create({
+      return await ctx.db.post.create({
         data: {
           title: input.title,
           content: input.content,

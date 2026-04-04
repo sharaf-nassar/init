@@ -39,18 +39,60 @@ The script copies (or clones) the template, renames the package, configures port
 - **Husky + lint-staged** — Pre-commit (Biome) and pre-push (typecheck) hooks
 - **Docker** — PostgreSQL 16 + Node 24 LTS dev container
 
+## lat.md (Architecture Docs)
+
+This repo uses [lat.md](https://www.npmjs.com/package/lat.md) to maintain a structured knowledge graph in the `lat.md/` directory. AI agents and developers use it to understand the architecture before making changes.
+
+The `lat.md/` directory is already initialized — you just need the CLI and an API key for semantic search.
+
+### Setup
+
+```bash
+# 1. Install the CLI globally
+npm i -g lat.md
+
+# 2. Configure an API key for semantic search (OpenAI or Vercel)
+#    Pick ONE of these methods:
+
+# Option A: config file (recommended)
+mkdir -p ~/.config/lat
+echo '{ "llm_key": "sk-..." }' > ~/.config/lat/config.json
+
+# Option B: environment variable
+export LAT_LLM_KEY="sk-..."
+
+# Option C: key file
+export LAT_LLM_KEY_FILE="/path/to/key-file"
+
+# Option D: helper command that prints the key
+export LAT_LLM_KEY_HELPER="op read 'op://Vault/OpenAI/key'"
+```
+
+### Usage
+
+```bash
+lat search "auth bypass"           # Semantic search across all sections
+lat locate "Route Protection"      # Find a section by name
+lat section "auth#Development Bypass"  # Show section with refs
+lat check                          # Validate all links and code refs
+```
+
 ## Quick Start (Docker)
 
 ```bash
 # 1. Clone the repo
 git clone <repo-url> my-app
 cd my-app
+git submodule update --init
 
-# 2. Copy environment template and generate AUTH_SECRET
+# 2. Install dependencies (also sets up git hooks via Husky)
+npm install
+
+# 3. Copy environment template and generate AUTH_SECRET
 cp .env.example .env
 echo "AUTH_SECRET=$(openssl rand -base64 32)" >> .env
 
-# 3. Start the full stack
+# 4. Start the full stack
 docker compose up --build
 ```
 
@@ -64,6 +106,7 @@ This starts PostgreSQL on `127.0.0.1:5432` and the Next.js dev server on `127.0.
 # 1. Clone the repo
 git clone <repo-url> my-app
 cd my-app
+git submodule update --init
 
 # 2. Install dependencies
 npm install
@@ -80,6 +123,31 @@ npx prisma db push
 # 5. Start the dev server
 npm run dev
 ```
+
+## Cloud Deploy (Vercel + Neon)
+
+This template can deploy directly from a local checkout without GitHub,
+GitLab, Bitbucket, or Azure DevOps integration.
+
+Prerequisite:
+
+```bash
+npm install -g vercel
+```
+
+Deploy the current directory:
+
+```bash
+npm run deploy:cloud
+```
+
+On first run, the command will:
+
+- prompt for a missing `VERCEL_TOKEN` and save it in user-global config
+- create or reuse a Vercel project for the current app
+- provision or reuse a Neon Postgres database through the Vercel integration
+- create missing production env vars such as `DATABASE_URL` and `AUTH_SECRET`
+- offer to configure GitHub OAuth for working production sign-in
 
 ## Environment Variables
 
@@ -131,12 +199,17 @@ npm run db:migrate   # Apply migrations (production)
 │   ├── trpc/                     # tRPC client hooks + server caller
 │   ├── env.js                    # Environment validation (t3-env)
 │   └── styles/globals.css        # Tailwind + brand theme
-├── scripts/create-project.sh     # Bootstrap script for new projects
+├── scripts/
+│   ├── create-project.sh         # Bootstrap script for new projects
+│   └── cloud/
+│       ├── config.mjs            # User-global credential persistence
+│       ├── prompts.mjs           # Interactive prompts and secret generation
+│       ├── vercel.mjs            # Vercel project, env, Neon, and deploy helpers
+│       └── deploy.mjs            # Single cloud deploy entrypoint
 ├── biome.json                    # Linter + formatter config
 ├── Dockerfile.dev                # Dev container (Node 24 LTS)
 └── docker-compose.yml            # PostgreSQL + web (resource limits)
 ```
-
 ## License
 
 MIT

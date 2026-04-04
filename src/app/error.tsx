@@ -10,6 +10,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
+    // biome-ignore lint/suspicious/noConsole: error boundary must log to browser console
     console.error("Unhandled error:", error);
   }, [error]);
 

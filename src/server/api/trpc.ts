@@ -11,6 +11,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { z } from "zod";
 import { env } from "~/env";
+import { logger } from "~/lib/logger";
 import { auth } from "~/server/auth";
 import { DEV_SESSION, ensureDevUser } from "~/server/auth/dev-session";
 import { db } from "~/server/db";
@@ -91,7 +92,7 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
   const result = await next();
 
   if (t._config.isDev) {
-    console.log(`[TRPC] ${path} took ${Date.now() - start}ms to execute`);
+    logger.debug(`[TRPC] ${path} took ${Date.now() - start}ms to execute`);
   }
 
   return result;

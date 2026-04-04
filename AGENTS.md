@@ -1,113 +1,157 @@
-# Init Repo Instructions
+# Before starting work
 
-This file is the Codex-adapted repo contract for `init`. Keep broader agent behavior in higher-priority global instructions, and treat this file as the maintained replacement for repo-specific guidance that previously lived in `CLAUDE.md`.
+- Run `lat search` to find sections relevant to your task. Read them to understand the design intent before writing code.
+- Run `lat expand` on user prompts to expand any `[[refs]]` — this resolves section names to file locations and provides context.
+
+# Post-task checklist (REQUIRED — do not skip)
+
+After EVERY task, before responding to the user:
+
+- [ ] Update `lat.md/` if you added or changed any functionality, architecture, tests, or behavior
+- [ ] Run `lat check` — all wiki links and code refs must pass
+- [ ] Commit your changes (see commit discipline below)
+- [ ] Do not skip these steps. Do not consider your task done until both are complete.
+
+# Commit Discipline
+
+Never leave uncommitted changes. Every task must end with a clean working tree.
+
+- **After completing a task**: create a new commit with a descriptive message.
+- **During a multi-step task**: if you already committed earlier in the same task and have new changes, amend the previous commit (`git commit --amend`) to keep the task as a single logical commit.
+- **Before ending a session**: verify `git status` is clean. If any changes remain, commit or amend them — do not leave work uncommitted.
+- **Commit message format**: follow the `<type>: <description>` convention used by this repo (see `git log` for examples).
+
+---
+
+# Project Identity
 
 `init` is a reusable starter template, not an app with product-specific requirements. Favor generic, durable implementations that downstream projects can inherit cleanly.
 
-## Working Style
+# Working Style
 
-- Preserve existing patterns before inventing new ones. The canonical examples are `src/server/api/routers/post.ts`, `src/server/api/trpc.ts`, `src/server/auth/config.ts`, `src/app/_components/providers.tsx`, and `src/env.js`.
-- Prefer narrow edits over sweeping refactors. If you touch a file that is getting unwieldy, split it along responsibility boundaries rather than growing it further.
+- Preserve existing patterns before inventing new ones. Canonical examples: `src/server/api/routers/post.ts`, `src/server/api/trpc.ts`, `src/server/auth/config.ts`, `src/app/_components/providers.tsx`, `src/env.js`.
+- Prefer narrow edits over sweeping refactors. Split files along responsibility boundaries rather than growing them.
 - Before relying on library or framework behavior, verify current official docs instead of trusting memory.
-- Do not add product branding, business logic, or app-specific assumptions unless the user explicitly asks for them.
+- Do not add product branding, business logic, or app-specific assumptions unless explicitly asked.
 
-## Stack Snapshot
+# Verification
 
-- Next.js 16 App Router with React 19 and TypeScript 5.9 in strict mode
-- tRPC 11 for the API layer
-- Prisma 7 with `@prisma/adapter-pg` and generated client output under `src/generated/prisma/`
-- Auth.js v5 with Prisma adapter and a development bypass via `AUTH_DISABLED`
-- Tailwind CSS 4, local shadcn/ui components, Lucide icons, Sonner toasts, Motion, `next-themes`, and `nuqs`
-- Biome for linting and formatting, Husky + lint-staged for git hooks
-- Docker Compose for local Postgres + app runtime
-
-## Non-Negotiable Code Rules
-
-- No placeholders, stubs, deferred logic markers, or commented-out dead code.
-- Keep files focused. Aim for one concern per file and split files before they exceed roughly 150 lines of logic.
-- Use `~/` imports, not relative imports.
-- Do not use `any`, `@ts-ignore`, `@ts-expect-error`, non-null assertions, or casual `as` casts. Narrow types explicitly or validate first.
-- Prefer immutable updates. Do not mutate shared objects or arrays in place.
-
-## Validation and Types
-
-- Validate every trust-boundary input with Zod: tRPC inputs, form data, URL params, and external API responses.
-- Add max-length constraints to user-controlled strings in both Zod schemas and HTML form attributes.
-- Prefer Zod 4 top-level validators such as `z.email()` and `z.url()`.
-- Use `z.treeifyError()` for structured Zod error formatting.
-- Keep TypeScript strictness intact. Fix type problems instead of suppressing them.
-
-## Environment and Security
-
-- All app env vars must be declared in `src/env.js`. Do not read `process.env` directly outside framework glue code.
-- Never expose secrets to client code or `NEXT_PUBLIC_*` unless the value is genuinely public.
-- `AUTH_SECRET` is required in normal operation and must stay server-only.
-- `AUTH_DISABLED=true` is a development-only bypass. Keep the dev-bypass guards aligned across env validation, middleware, and server auth code.
-- Preserve the security headers configured in `next.config.js`.
-- Sign-out must remain a POST flow, not a GET link.
-
-## Auth, API, and Data Access
-
-- Use Auth.js v5 patterns only. Import auth helpers from `src/server/auth/index.ts`, not directly from `next-auth`.
-- All database writes must go through tRPC `protectedProcedure`.
-- `protectedProcedure` must enforce a real `session.user.id`, not just a truthy `user`.
-- Read-only queries may use `publicProcedure` when the data is not sensitive.
-- All list endpoints must use cursor-based pagination. Follow the `take + 1` / `slice` pattern used in `src/server/api/routers/post.ts`.
-- Client pagination should use `useInfiniteQuery`, and SSR prefetches must use `prefetchInfinite` with the same input shape.
-- Middleware route protection stays cookie-based. Do not import Prisma or full auth evaluation into `src/middleware.ts`.
-- Add newly protected routes to `src/middleware.ts`.
-
-## Prisma and Database Conventions
-
-- Keep the Prisma 7 adapter setup in `src/server/db.ts`. Do not switch back to the old built-in engine pattern.
-- Import Prisma client/types from `~/generated/prisma/client`, not `@prisma/client`.
-- Keep datasource CLI configuration in `prisma.config.ts`. Do not reintroduce a `url` field in `schema.prisma`.
-- Use the repo scripts for DB workflows when possible: `npm run db:dev`, `npm run db:migrate`, `npm run db:push`, and `npx prisma generate`.
-
-## Frontend Conventions
-
-- Prefer local shadcn/ui primitives from `src/components/ui/` over bespoke primitives when they fit the need.
-- Add shadcn components on demand. Do not install the whole library when only one or two primitives are needed.
-- Use `cn()` from `src/lib/utils.ts` for conditional classes.
-- Use semantic theme tokens from `src/styles/globals.css` instead of hardcoded color values.
-- Keep client providers centralized in `src/app/_components/providers.tsx`, not in `layout.tsx`.
-- Use Sonner for user-facing mutation feedback.
-- Use `nuqs` for shareable URL state, not ephemeral component state.
-- Prefer CSS transitions for simple effects; use `motion/react` when layout or presence animation actually requires it.
-- Use Lucide icons and the `size` prop.
-
-## Logging and Runtime Behavior
-
-- Use `src/lib/logger.ts` for server-side logging. Do not add `console.*` calls to server paths.
-- Keep the health check at `/api/health` lightweight and database-focused.
-- Client providers belong in `src/app/_components/providers.tsx`.
-- The global error boundary is `src/app/error.tsx`; preserve it as the catch-all UI boundary.
-
-## Docker and Local Runtime
-
-- Keep Docker ports localhost-only.
-- Preserve the anonymous volume pattern for `/app/node_modules` and `/app/.next`.
-- Keep the container running as a non-root user.
-
-## Verification
-
-- Run the narrowest relevant checks before finishing. For this repo that usually means `npm run typecheck` and `npm run lint`, plus any targeted command needed for the change.
-- Do not claim success if you did not run verification.
-
-## Useful Commands
+Run the narrowest relevant checks before finishing. For this repo that usually means:
 
 ```bash
-npm run dev
-npm run build
-npm run start
 npm run typecheck
 npm run lint
-npm run lint:fix
-npm run format
-npm run analyze
-npm run db:dev
-npm run db:migrate
-npm run db:push
-npx prisma generate
-npx prisma studio
 ```
+
+Do not claim success if you did not run verification.
+
+# Quick Reference
+
+```bash
+npm run dev            # Dev server (Turbopack)
+npm run build          # Production build
+npm run typecheck      # TypeScript strict checks
+npm run lint           # Biome check only
+npm run lint:fix       # Biome check + autofix
+npm run format         # Biome formatter
+npm run analyze        # Bundle size treemap
+npm run deploy:cloud   # Deploy to Vercel + Neon
+npx prisma studio      # Visual DB browser
+npx prisma db push     # Push schema to DB
+npx prisma generate    # Regenerate Prisma client
+npm run db:dev         # Create migration
+npm run db:migrate     # Apply migrations
+```
+
+---
+
+# What is lat.md?
+
+This project uses [lat.md](https://www.npmjs.com/package/lat.md) to maintain a structured knowledge graph of its architecture, design decisions, and test specs in the `lat.md/` directory. It is a set of cross-linked markdown files that describe **what** this project does and **why** — the domain concepts, key design decisions, business logic, and test specifications. Use it to ground your work in the actual architecture rather than guessing.
+
+# Commands
+
+```bash
+lat locate "Section Name"      # find a section by name (exact, fuzzy)
+lat refs "file#Section"        # find what references a section
+lat search "natural language"  # semantic search across all sections
+lat expand "user prompt text"  # expand [[refs]] to resolved locations
+lat check                      # validate all links and code refs
+```
+
+Run `lat --help` when in doubt about available commands or options.
+
+If `lat search` fails because no API key is configured, explain to the user that semantic search requires a key provided via `LAT_LLM_KEY` (direct value), `LAT_LLM_KEY_FILE` (path to key file), or `LAT_LLM_KEY_HELPER` (command that prints the key). Supported key prefixes: `sk-...` (OpenAI) or `vck_...` (Vercel). If the user doesn't want to set it up, use `lat locate` for direct lookups instead.
+
+# Syntax primer
+
+- **Section ids**: `lat.md/path/to/file#Heading#SubHeading` — full form uses project-root-relative path (e.g. `lat.md/tests/search#RAG Replay Tests`). Short form uses bare file name when unique (e.g. `search#RAG Replay Tests`, `cli#search#Indexing`).
+- **Wiki links**: `[[target]]` or `[[target|alias]]` — cross-references between sections. Can also reference source code: `[[src/foo.ts#myFunction]]`.
+- **Source code links**: Wiki links in `lat.md/` files can reference functions, classes, constants, and methods in TypeScript/JavaScript/Python/Rust/Go/C files. Use the full path: `[[src/config.ts#getConfigDir]]`, `[[src/server.ts#App#listen]]` (class method), `[[lib/utils.py#parse_args]]`, `[[src/lib.rs#Greeter#greet]]` (Rust impl method), `[[src/app.go#Greeter#Greet]]` (Go method), `[[src/app.h#Greeter]]` (C struct). `lat check` validates these exist.
+- **Code refs**: `// @lat: [[section-id]]` (JS/TS/Rust/Go/C) or `# @lat: [[section-id]]` (Python) — ties source code to concepts
+
+# Test specs
+
+Key tests can be described as sections in `lat.md/` files (e.g. `tests.md`). Add frontmatter to require that every leaf section is referenced by a `// @lat:` or `# @lat:` comment in test code:
+
+```markdown
+---
+lat:
+  require-code-mention: true
+---
+# Tests
+
+Authentication and authorization test specifications.
+
+## User login
+
+Verify credential validation and error handling for the login endpoint.
+
+### Rejects expired tokens
+Tokens past their expiry timestamp are rejected with 401, even if otherwise valid.
+
+### Handles missing password
+Login request without a password field returns 400 with a descriptive error.
+```
+
+Every section MUST have a description — at least one sentence explaining what the test verifies and why. Empty sections with just a heading are not acceptable. (This is a specific case of the general leading paragraph rule below.)
+
+Each test in code should reference its spec with exactly one comment placed next to the relevant test — not at the top of the file:
+
+```python
+# @lat: [[tests#User login#Rejects expired tokens]]
+def test_rejects_expired_tokens():
+    ...
+
+# @lat: [[tests#User login#Handles missing password]]
+def test_handles_missing_password():
+    ...
+```
+
+Do not duplicate refs. One `@lat:` comment per spec section, placed at the test that covers it. `lat check` will flag any spec section not covered by a code reference, and any code reference pointing to a nonexistent section.
+
+# Section structure
+
+Every section in `lat.md/` **must** have a leading paragraph — at least one sentence immediately after the heading, before any child headings or other block content. The first paragraph must be ≤250 characters (excluding `[[wiki link]]` content). This paragraph serves as the section's overview and is used in search results, command output, and RAG context — keeping it concise guarantees the section's essence is always captured.
+
+```markdown
+# Good Section
+
+Brief overview of what this section documents and why it matters.
+
+More detail can go in subsequent paragraphs, code blocks, or lists.
+
+## Child heading
+
+Details about this child topic.
+```
+
+```markdown
+# Bad Section
+
+## Child heading
+
+Details about this child topic.
+```
+
+The second example is invalid because `Bad Section` has no leading paragraph. `lat check` validates this rule and reports errors for missing or overly long leading paragraphs.

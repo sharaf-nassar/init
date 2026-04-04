@@ -51,3 +51,12 @@ src/generated/
 
 # biome
 biome-debug-*
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+.mcp.json
+.codex
+
+# lat.md vector DB
+lat.md/.cache/vectors.db
+

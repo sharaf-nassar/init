@@ -206,8 +206,9 @@ node -e "
   readme = readme.replace(/# 4\./g, '# 3.');
   readme = readme.replace(/# 5\./g, '# 4.');
 
-  // Remove scripts/create-project.sh from Project Structure
+  // Remove only scripts/create-project.sh from Project Structure
   readme = readme.replace(/├── scripts\/create-project\.sh.*\n/, '');
+  readme = readme.replace(/│   ├── create-project\.sh.*\n/, '');
 
   // Update the default database name to match the generated project
   readme = readme.replaceAll('t3app', '${DB_NAME}');
@@ -225,8 +226,8 @@ node -e "
   // Replace title with project name
   claude = claude.replace(/^# T3 Stack Boilerplate/, '# ${PROJECT_NAME}');
 
-  // Remove scripts/ from Project Structure
-  claude = claude.replace(/├── scripts\/\n│   └── create-project\.sh.*\n/, '');
+  // Remove only scripts/create-project.sh from Project Structure
+  claude = claude.replace(/│   [├└]── create-project\.sh.*\n/, '');
 
   // Update the default database name to match the generated project
   claude = claude.replaceAll('t3app', '${DB_NAME}');
@@ -244,8 +245,13 @@ node -e "
 ok "CLAUDE.md tailored for ${PROJECT_NAME}"
 
 # ── Remove template-only files ─────────────────────────────────────────────
-rm -rf scripts/
-ok "Removed template-only scripts/"
+rm -f scripts/create-project.sh
+
+if [ -d scripts ] && [ -z "$(find scripts -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+  rmdir scripts
+fi
+
+ok "Removed template-only bootstrap script"
 
 # ── Configure project-specific names ─────────────────────────────────────────
 info "Configuring project-specific names..."

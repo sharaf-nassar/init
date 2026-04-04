@@ -19,7 +19,7 @@ const auth = cache(async () => {
   if (!authInstance) {
     throw new Error("Auth.js not initialized — AUTH_SECRET may be missing");
   }
-  return authInstance.auth();
+  return await authInstance.auth();
 });
 
 const handlers = authInstance?.handlers ?? {

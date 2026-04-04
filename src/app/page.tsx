@@ -16,7 +16,7 @@ export default async function Home() {
           </h1>
 
           <div className="flex flex-col items-center gap-4">
-            {session && !env.AUTH_DISABLED ? (
+            {session && !env.AUTH_DISABLED && (
               <>
                 <p className="text-xl">
                   Signed in as{" "}
@@ -36,13 +36,15 @@ export default async function Home() {
                   </button>
                 </form>
               </>
-            ) : session ? (
+            )}
+            {session && env.AUTH_DISABLED && (
               <p className="text-xl">
                 Signed in as{" "}
                 <span className="font-semibold">{session.user.name ?? session.user.email}</span>
                 <span className="ml-2 text-sm text-white/50">(auth disabled)</span>
               </p>
-            ) : (
+            )}
+            {!session && (
               <>
                 <p className="text-xl">Sign in to create posts</p>
                 <a
