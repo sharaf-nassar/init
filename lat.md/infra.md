@@ -6,11 +6,12 @@ Docker Compose for local development, pino for structured logging, t3-env for en
 
 Docker Compose runs PostgreSQL + Next.js dev server with localhost-only ports and container isolation.
 
-- DB: `127.0.0.1:5432`, web: `127.0.0.1:3000` — do not expose beyond localhost
+- DB: `127.0.0.1:${DB_PORT:-5432}`, web: `127.0.0.1:${APP_PORT:-3000}` — do not expose beyond localhost
 - Anonymous volumes for `/app/node_modules` and `/app/.next` isolate container binaries from host — do not remove
-- Container runs as non-root `appuser` with resource limits (2 CPUs, 2GB RAM)
-- Startup auto-runs `prisma generate` and `prisma db push`
-- `Dockerfile.dev` uses `node:24-alpine` with a dedicated non-root user
+- Resource limits: 2 CPUs, 2GB RAM
+- Prisma schema and `prisma.config.ts` are copied before `npm ci` so the `postinstall` script (`prisma generate`) succeeds during the build
+- Startup runs `prisma db push` only — client generation is handled at build time by `postinstall`
+- `Dockerfile.dev` uses `node:24-alpine` — runs as root for bind-mount compatibility (non-root users can't read host-owned files)
 
 ## Logging
 

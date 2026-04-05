@@ -28,6 +28,12 @@ TTY input handling in `scripts/cloud/prompts.mjs` for token and credential entry
 
 ## Project Bootstrap
 
-`scripts/create-project.sh` scaffolds a new project from this template with customizable ports and database names.
+`scripts/create-project.sh` scaffolds a new project from this template with a choice of full-stack or frontend-only mode.
 
-Accepts `<project-name>` (validated: alphanumeric + hyphen/underscore, starts with letter) and optional `--template REPO` (GitHub via degit), `--web-port`, `--db-port`. Uses `rsync` to copy template files, excluding `node_modules`, `.next`, `.git`, `.env`, `.claude`, and `src/generated`. Tailors `package.json` name, updates `README.md` and `CLAUDE.md` with project-specific values, generates `AUTH_SECRET` via `openssl rand -base64 32`, and initializes a fresh git repo with an initial commit. Prerequisites: Node.js 24+, npm, git, rsync.
+Accepts `<project-name>` (validated: alphanumeric + hyphen/underscore, starts with letter) and optional `--mode full|frontend` (prompted interactively if omitted), `--template REPO` (GitHub via degit), `--web-port`, `--db-port`. Uses `rsync` to copy template files, excluding `node_modules`, `.next`, `.git`, `.env`, `.claude`, and `src/generated`. Tailors `package.json` name, updates `README.md` and `CLAUDE.md` with project-specific values, generates `AUTH_SECRET` via `openssl rand -base64 32` (full mode), and initializes a fresh git repo with an initial commit. Port availability is checked via `ss` (with `lsof` fallback): default ports that are in use are replaced with the next available port in the prompt, and any chosen port that is in use triggers a warning with confirmation (or a hard failure in non-interactive mode). Prerequisites: Node.js 24+, npm, git, rsync.
+
+### Frontend Mode
+
+`--mode frontend` strips all backend components and produces a clean Next.js + Tailwind CSS + shadcn/ui project.
+
+Delegates to `scripts/strip-backend.sh` which removes `src/server/`, `src/trpc/`, `prisma/`, `src/middleware.ts`, `src/lib/logger.ts`, `src/app/api/`, `scripts/cloud/`, and backend-coupled components (`create-post-form.tsx`, `post-list.tsx`). Replaces `page.tsx`, `layout.tsx`, `env.js`, `docker-compose.yml`, `.env.example`, and `Dockerfile.dev` with frontend-only templates from `scripts/templates/frontend/`. Strips backend dependencies and scripts from `package.json`, updates lint/format commands to drop the `scripts/` path, and simplifies `README.md` and `CLAUDE.md`. The generated project runs with `npm install && npm run dev` — no database or auth setup required.

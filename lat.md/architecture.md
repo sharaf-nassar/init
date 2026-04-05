@@ -70,7 +70,7 @@ Standard workflow for adding new functionality to this template.
 
 ## Project Structure
 
-Key directories and their responsibilities in the template.
+Key directories and their responsibilities in the template (full mode). See [[deploy#Project Bootstrap#Frontend Mode]] for the frontend-only variant.
 
 ```
 ├── prisma/schema.prisma              # Database schema

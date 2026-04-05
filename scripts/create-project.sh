@@ -8,10 +8,13 @@ set -euo pipefail
 #   ./scripts/create-project.sh <project-name> [OPTIONS]
 #
 # Options:
+#   --mode MODE      Project mode: 'full' or 'frontend' (prompted if omitted)
+#                    full: Next.js + tRPC + Prisma + Auth.js (default)
+#                    frontend: Next.js only (no database, auth, or API layer)
 #   --template REPO  GitHub user/repo to clone via degit (optional).
 #                    If omitted, copies files from the local template directory.
 #   --web-port PORT  Host port for the Next.js dev server (default: 3000)
-#   --db-port PORT   Host port for PostgreSQL (default: 5432)
+#   --db-port PORT   Host port for PostgreSQL (default: 5432, full mode only)
 #
 # Prerequisites: Node.js 24+, npm, git
 # ─────────────────────────────────────────────────────────────────────────────
@@ -20,8 +23,11 @@ set -euo pipefail
 TEMPLATE_REPO=""
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
+MODE=""
 WEB_PORT=3000
 DB_PORT=5432
+WEB_PORT_SET=false
+DB_PORT_SET=false
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -34,6 +40,32 @@ info()  { echo -e "${CYAN}ℹ${NC}  $1"; }
 ok()    { echo -e "${GREEN}✔${NC}  $1"; }
 warn()  { echo -e "${YELLOW}⚠${NC}  $1"; }
 fail()  { echo -e "${RED}✖${NC}  $1" >&2; exit 1; }
+
+# ── Port helpers ────────────────────────────────────────────────────────────
+port_in_use() {
+  if command -v ss >/dev/null 2>&1; then
+    ss -tlnH "sport = :$1" 2>/dev/null | grep -q .
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"$1" -sTCP:LISTEN -P -n >/dev/null 2>&1
+  else
+    return 1 # can't check — assume available
+  fi
+}
+
+find_available_port() {
+  local start="$1"
+  local port="$start"
+  local max=$((start + 100))
+  [ "$max" -gt 65535 ] && max=65535
+  while [ "$port" -le "$max" ]; do
+    if ! port_in_use "$port"; then
+      echo "$port"
+      return
+    fi
+    port=$((port + 1))
+  done
+  echo "$start" # fallback: all ports in range busy
+}
 
 # ── Parse arguments ──────────────────────────────────────────────────────────
 PROJECT_NAME=""
@@ -48,11 +80,18 @@ while [ $# -gt 0 ]; do
     --web-port)
       [ $# -lt 2 ] && fail "--web-port requires a value"
       WEB_PORT="$2"
+      WEB_PORT_SET=true
       shift 2
       ;;
     --db-port)
       [ $# -lt 2 ] && fail "--db-port requires a value"
       DB_PORT="$2"
+      DB_PORT_SET=true
+      shift 2
+      ;;
+    --mode)
+      [ $# -lt 2 ] && fail "--mode requires a value: full or frontend"
+      MODE="$2"
       shift 2
       ;;
     -h|--help)
@@ -61,10 +100,13 @@ while [ $# -gt 0 ]; do
       echo "Creates a new project from the T3 Stack template."
       echo ""
       echo "Options:"
+      echo "  --mode MODE      Project mode: 'full' or 'frontend' (prompted if omitted)"
+      echo "                   full: Next.js + tRPC + Prisma + Auth.js"
+      echo "                   frontend: Next.js only (no database, auth, or API)"
       echo "  --template REPO  GitHub user/repo to clone via degit (optional)."
       echo "                   If omitted, copies from the local template directory."
       echo "  --web-port PORT  Host port for Next.js dev server (default: 3000)"
-      echo "  --db-port PORT   Host port for PostgreSQL (default: 5432)"
+      echo "  --db-port PORT   Host port for PostgreSQL (default: 5432, full mode only)"
       exit 0
       ;;
     -*)
@@ -79,10 +121,67 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$PROJECT_NAME" ]; then
-  echo "Usage: $0 <project-name> [--template REPO] [--web-port PORT] [--db-port PORT]"
+  echo "Usage: $0 <project-name> [--mode MODE] [--template REPO] [--web-port PORT] [--db-port PORT]"
   echo ""
   echo "Creates a new project from the T3 Stack template."
   exit 1
+fi
+
+# ── Resolve mode ────────────────────────────────────────────────────────────
+if [ -z "$MODE" ]; then
+  if [ -t 0 ]; then
+    echo ""
+    echo "Select project mode:"
+    echo ""
+    echo "  1) full      — Next.js + tRPC + Prisma + Auth.js"
+    echo "  2) frontend  — Next.js only (no database, auth, or API layer)"
+    echo ""
+    read -r -p "Mode [1/2, default: 1]: " mode_choice
+    case "$mode_choice" in
+      2|frontend) MODE="frontend" ;;
+      1|full|"")  MODE="full" ;;
+      *)
+        warn "Unrecognized choice '${mode_choice}', defaulting to full mode."
+        MODE="full"
+        ;;
+    esac
+    echo ""
+  else
+    MODE="full"
+  fi
+fi
+
+if [ "$MODE" != "full" ] && [ "$MODE" != "frontend" ]; then
+  fail "Invalid mode '${MODE}'. Use 'full' or 'frontend'."
+fi
+
+# ── Resolve ports ───────────────────────────────────────────────────────────
+if [ -t 0 ]; then
+  if [ "$WEB_PORT_SET" = "false" ]; then
+    web_default="$WEB_PORT"
+    if port_in_use "$web_default"; then
+      web_default=$(find_available_port "$WEB_PORT")
+      if [ "$web_default" != "$WEB_PORT" ]; then
+        warn "Default web port ${WEB_PORT} is in use, suggesting ${web_default}"
+      fi
+    fi
+    read -r -p "Web port [default: ${web_default}]: " web_port_input
+    WEB_PORT="${web_port_input:-$web_default}"
+  fi
+
+  if [ "$MODE" = "full" ] && [ "$DB_PORT_SET" = "false" ]; then
+    db_default="$DB_PORT"
+    if port_in_use "$db_default"; then
+      db_default=$(find_available_port "$DB_PORT")
+      if [ "$db_default" != "$DB_PORT" ]; then
+        warn "Default database port ${DB_PORT} is in use, suggesting ${db_default}"
+      fi
+    fi
+    read -r -p "Database port [default: ${db_default}]: " db_port_input
+    DB_PORT="${db_port_input:-$db_default}"
+  fi
+
+  echo ""
 fi
 
 # ── Validate inputs ──────────────────────────────────────────────────────────
@@ -106,12 +205,36 @@ if [[ ! "$WEB_PORT" =~ ^[0-9]+$ ]] || [ "$WEB_PORT" -lt 1 ] || [ "$WEB_PORT" -gt
   fail "Invalid web port '${WEB_PORT}'. Must be a number between 1 and 65535."
 fi
 
-if [[ ! "$DB_PORT" =~ ^[0-9]+$ ]] || [ "$DB_PORT" -lt 1 ] || [ "$DB_PORT" -gt 65535 ]; then
-  fail "Invalid database port '${DB_PORT}'. Must be a number between 1 and 65535."
+if [ "$MODE" = "full" ]; then
+  if [[ ! "$DB_PORT" =~ ^[0-9]+$ ]] || [ "$DB_PORT" -lt 1 ] || [ "$DB_PORT" -gt 65535 ]; then
+    fail "Invalid database port '${DB_PORT}'. Must be a number between 1 and 65535."
+  fi
+
+  if [ "$WEB_PORT" = "$DB_PORT" ]; then
+    fail "Web port and database port cannot be the same (both set to ${WEB_PORT})."
+  fi
 fi
 
-if [ "$WEB_PORT" = "$DB_PORT" ]; then
-  fail "Web port and database port cannot be the same (both set to ${WEB_PORT})."
+# ── Check port availability ─────────────────────────────────────────────────
+check_port() {
+  local label="$1" port="$2"
+  if port_in_use "$port"; then
+    warn "${label} port ${port} is currently in use."
+    if [ -t 0 ]; then
+      read -r -p "  Continue anyway? [y/N]: " confirm
+      case "$confirm" in
+        y|Y|yes|YES) ;;
+        *) fail "Aborted — choose a different port." ;;
+      esac
+    else
+      fail "${label} port ${port} is already in use."
+    fi
+  fi
+}
+
+check_port "Web" "$WEB_PORT"
+if [ "$MODE" = "full" ]; then
+  check_port "Database" "$DB_PORT"
 fi
 
 # ── Check prerequisites ─────────────────────────────────────────────────────
@@ -244,51 +367,75 @@ node -e "
 "
 ok "CLAUDE.md tailored for ${PROJECT_NAME}"
 
+# ── Strip backend (frontend mode) ──────────────────────────────────────────
+if [ "$MODE" = "frontend" ]; then
+  bash scripts/strip-backend.sh "$PROJECT_NAME" "$WEB_PORT"
+fi
+
 # ── Remove template-only files ─────────────────────────────────────────────
 rm -f scripts/create-project.sh
+rm -f scripts/strip-backend.sh
+rm -rf scripts/templates
 
 if [ -d scripts ] && [ -z "$(find scripts -mindepth 1 -maxdepth 1 -print -quit)" ]; then
   rmdir scripts
 fi
 
-ok "Removed template-only bootstrap script"
+ok "Removed template-only bootstrap files"
 
-# ── Configure project-specific names ─────────────────────────────────────────
-info "Configuring project-specific names..."
-node -e "
-  const fs = require('fs');
-  const dbName = '${DB_NAME}';
+# ── Configure project-specific names and ports (full mode) ──────────────────
+if [ "$MODE" = "full" ]; then
+  info "Configuring project-specific names..."
+  node -e "
+    const fs = require('fs');
+    const dbName = '${DB_NAME}';
 
-  let envExample = fs.readFileSync('.env.example', 'utf8');
-  envExample = envExample.replace(/^POSTGRES_DB=.*$/m, 'POSTGRES_DB=' + dbName);
-  envExample = envExample.replace(
-    /^DATABASE_URL=.*$/m,
-    'DATABASE_URL=\"postgresql://your_db_user:your_strong_password_here@localhost:5432/' + dbName + '\"'
-  );
-  fs.writeFileSync('.env.example', envExample);
+    let envExample = fs.readFileSync('.env.example', 'utf8');
+    envExample = envExample.replace(/^POSTGRES_DB=.*$/m, 'POSTGRES_DB=' + dbName);
+    envExample = envExample.replace(
+      /^DATABASE_URL=.*$/m,
+      'DATABASE_URL=\"postgresql://your_db_user:your_strong_password_here@localhost:5432/' + dbName + '\"'
+    );
+    fs.writeFileSync('.env.example', envExample);
 
-  let dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
-  dockerCompose = dockerCompose.replaceAll('t3app', dbName);
-  fs.writeFileSync('docker-compose.yml', dockerCompose);
-"
-ok "Database name set to '${DB_NAME}'"
+    let dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
+    dockerCompose = dockerCompose.replaceAll('t3app', dbName);
+    fs.writeFileSync('docker-compose.yml', dockerCompose);
 
-# ── Configure ports ──────────────────────────────────────────────────────────
-if [ "$WEB_PORT" != "3000" ] || [ "$DB_PORT" != "5432" ]; then
-  info "Configuring custom ports..."
+    // Also update lat.md docs if present
+    const path = require('path');
+    const latDir = 'lat.md';
+    if (fs.existsSync(latDir)) {
+      const walk = (dir) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) walk(full);
+          else if (entry.name.endsWith('.md')) {
+            let content = fs.readFileSync(full, 'utf8');
+            if (content.includes('t3app')) {
+              fs.writeFileSync(full, content.replaceAll('t3app', dbName));
+            }
+          }
+        }
+      };
+      walk(latDir);
+    }
+  "
+  ok "Database name set to '${DB_NAME}'"
 
-  if [ "$DB_PORT" != "5432" ]; then
-    # Update host-facing DB port in docker-compose.yml (keep container port 5432)
-    sed -i "s|127.0.0.1:5432:5432|127.0.0.1:${DB_PORT}:5432|" docker-compose.yml
-    # Update DATABASE_URL in .env.example to reflect the host port
-    sed -i "s|localhost:5432|localhost:${DB_PORT}|" .env.example
-    ok "Database host port set to ${DB_PORT}"
-  fi
+  if [ "$WEB_PORT" != "3000" ] || [ "$DB_PORT" != "5432" ]; then
+    info "Configuring custom ports..."
 
-  if [ "$WEB_PORT" != "3000" ]; then
-    # Update host-facing web port in docker-compose.yml (keep container port 3000)
-    sed -i "s|127.0.0.1:3000:3000|127.0.0.1:${WEB_PORT}:3000|" docker-compose.yml
-    ok "Web server host port set to ${WEB_PORT}"
+    if [ "$DB_PORT" != "5432" ]; then
+      sed -i "s|127.0.0.1:5432:5432|127.0.0.1:${DB_PORT}:5432|" docker-compose.yml
+      sed -i "s|localhost:5432|localhost:${DB_PORT}|" .env.example
+      ok "Database host port set to ${DB_PORT}"
+    fi
+
+    if [ "$WEB_PORT" != "3000" ]; then
+      sed -i "s|127.0.0.1:3000:3000|127.0.0.1:${WEB_PORT}:3000|" docker-compose.yml
+      ok "Web server host port set to ${WEB_PORT}"
+    fi
   fi
 fi
 
@@ -302,21 +449,25 @@ else
   warn "No .env.example found — created empty .env"
 fi
 
-# Generate AUTH_SECRET and replace the placeholder in .env
-AUTH_SECRET=$(openssl rand -base64 32)
-sed -i "s|^AUTH_SECRET=.*|AUTH_SECRET=\"${AUTH_SECRET}\"|" .env
-ok "Generated AUTH_SECRET"
+# Generate AUTH_SECRET (full mode only)
+if [ "$MODE" = "full" ]; then
+  AUTH_SECRET=$(openssl rand -base64 32)
+  sed -i "s|^AUTH_SECRET=.*|AUTH_SECRET=\"${AUTH_SECRET}\"|" .env
+  ok "Generated AUTH_SECRET"
+fi
 
 # ── Validate template placeholders were replaced ─────────────────────────────
-info "Validating generated project names..."
-if grep -RInI \
-  --exclude-dir=.git \
-  --exclude-dir=node_modules \
-  --exclude-dir=.next \
-  "t3app" . >/dev/null; then
-  fail "Found unreplaced 't3app' references in the generated project."
+if [ "$MODE" = "full" ]; then
+  info "Validating generated project names..."
+  if grep -RInI \
+    --exclude-dir=.git \
+    --exclude-dir=node_modules \
+    --exclude-dir=.next \
+    "t3app" . >/dev/null; then
+    fail "Found unreplaced 't3app' references in the generated project."
+  fi
+  ok "No unreplaced 't3app' references remain"
 fi
-ok "No unreplaced 't3app' references remain"
 
 # ── Initialize git ───────────────────────────────────────────────────────────
 info "Initializing git repository..."
@@ -337,27 +488,41 @@ ok "Initial commit created"
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}  Project '${PROJECT_NAME}' is ready!${NC}"
+echo -e "${GREEN}  Project '${PROJECT_NAME}' is ready!  (mode: ${MODE})${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "  Ports:"
-echo "    Web server:  127.0.0.1:${WEB_PORT}"
-echo "    PostgreSQL:  127.0.0.1:${DB_PORT}"
-echo ""
-echo "  Next steps:"
-echo ""
-echo "    cd ${PROJECT_NAME}"
-echo ""
-echo "    # Start PostgreSQL (Docker)"
-echo "    docker compose up db -d"
-echo ""
-echo "    # Push database schema"
-echo "    npx prisma db push"
-echo ""
-echo "    # Start the dev server"
-echo "    npm run dev"
-echo ""
-echo "  Or start the full stack with Docker:"
-echo ""
-echo "    docker compose up --build"
+
+if [ "$MODE" = "full" ]; then
+  echo "  Ports:"
+  echo "    Web server:  127.0.0.1:${WEB_PORT}"
+  echo "    PostgreSQL:  127.0.0.1:${DB_PORT}"
+  echo ""
+  echo "  Next steps:"
+  echo ""
+  echo "    cd ${PROJECT_NAME}"
+  echo ""
+  echo "    # Start PostgreSQL (Docker)"
+  echo "    docker compose up db -d"
+  echo ""
+  echo "    # Push database schema"
+  echo "    npx prisma db push"
+  echo ""
+  echo "    # Start the dev server"
+  echo "    npm run dev"
+  echo ""
+  echo "  Or start the full stack with Docker:"
+  echo ""
+  echo "    docker compose up --build"
+else
+  echo "  Next steps:"
+  echo ""
+  echo "    cd ${PROJECT_NAME}"
+  echo ""
+  echo "    # Start the dev server"
+  echo "    npm run dev"
+  echo ""
+  echo "  Or start with Docker:"
+  echo ""
+  echo "    docker compose up --build"
+fi
 echo ""

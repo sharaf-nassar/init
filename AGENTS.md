@@ -34,6 +34,16 @@ Never leave uncommitted changes. Every task must end with a clean working tree.
 - Before relying on library or framework behavior, verify current official docs instead of trusting memory.
 - Do not add product branding, business logic, or app-specific assumptions unless explicitly asked.
 
+# Missing Tools
+
+If a tool or CLI command you need is not installed on the system, **stop immediately**. Do not attempt workarounds or substitute tools. Instead:
+
+1. Look up the latest version and official install instructions for the tool.
+2. Tell the user the tool is missing and share the install command/instructions.
+3. Offer to run the installation if it can be done non-interactively (e.g. `npm i -g`, `apt install`, `pip install`).
+
+Wait for the user's go-ahead before proceeding.
+
 # Verification
 
 Run the narrowest relevant checks before finishing. For this repo that usually means:

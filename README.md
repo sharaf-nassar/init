@@ -18,13 +18,21 @@ To clone from a remote GitHub repo instead:
 ./scripts/create-project.sh my-new-project --template myorg/t3-boilerplate
 ```
 
+For a frontend-only project (no database, auth, or API layer):
+
+```bash
+./scripts/create-project.sh my-new-project --mode frontend
+```
+
+If `--mode` is omitted, the script prompts you to choose. Use `--mode full` (the default) for the complete T3 Stack.
+
 Custom ports can be specified if the defaults (3000/5432) are already in use:
 
 ```bash
 ./scripts/create-project.sh my-new-project --web-port 3001 --db-port 5433
 ```
 
-The script copies (or clones) the template, renames the package, configures ports, generates `AUTH_SECRET`, installs dependencies, and creates an initial git commit.
+The script copies (or clones) the template, renames the package, configures ports, generates `AUTH_SECRET` (full mode), installs dependencies, and creates an initial git commit.
 
 ## Tech Stack
 

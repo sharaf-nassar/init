@@ -5,22 +5,17 @@ RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# Copy dependency manifests first for Docker layer caching
+# Copy dependency manifests and prisma schema/config before npm ci
+# so the postinstall script (prisma generate) can find the schema.
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
 
 RUN npm ci
 
-# Copy prisma schema for client generation
-COPY prisma ./prisma
-
-# Create a non-root user for running the application
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
-  && chown -R appuser:appgroup /app
-
-USER appuser
-
 EXPOSE 3000
 
-# Generate Prisma client, apply migrations (safe for dev), then start dev server.
+# Apply schema to dev DB, then start dev server.
+# prisma generate already ran during npm ci (postinstall).
 # WARNING: prisma db push is for dev/prototyping only — use 'prisma migrate deploy' for production.
-CMD sh -c "npx prisma generate && npx prisma db push --skip-generate && npm run dev"
+CMD ["sh", "-c", "npx prisma db push && exec npm run dev"]
