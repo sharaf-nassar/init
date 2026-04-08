@@ -41,6 +41,19 @@ ok()    { echo -e "${GREEN}✔${NC}  $1"; }
 warn()  { echo -e "${YELLOW}⚠${NC}  $1"; }
 fail()  { echo -e "${RED}✖${NC}  $1" >&2; exit 1; }
 
+# Use a backup suffix so in-place edits work on both GNU and BSD sed.
+sed_in_place() {
+  local expression="$1"
+  shift
+
+  sed -i.bak "$expression" "$@"
+
+  local file
+  for file in "$@"; do
+    rm -f -- "${file}.bak"
+  done
+}
+
 # ── Port helpers ────────────────────────────────────────────────────────────
 port_in_use() {
   if command -v ss >/dev/null 2>&1; then
@@ -427,13 +440,45 @@ if [ "$MODE" = "full" ]; then
     info "Configuring custom ports..."
 
     if [ "$DB_PORT" != "5432" ]; then
-      sed -i "s|127.0.0.1:5432:5432|127.0.0.1:${DB_PORT}:5432|" docker-compose.yml
-      sed -i "s|localhost:5432|localhost:${DB_PORT}|" .env.example
+      node -e "
+        const fs = require('fs');
+        let envExample = fs.readFileSync('.env.example', 'utf8');
+
+        const upsertEnvVar = (content, key, value) => {
+          const pattern = new RegExp('^' + key + '=.*$', 'm');
+          const line = key + '=' + value;
+          if (pattern.test(content)) {
+            return content.replace(pattern, line);
+          }
+
+          return content.replace(/^DATABASE_URL=.*$/m, (match) => match + '\n' + line);
+        };
+
+        envExample = envExample.replace(/localhost:5432/g, 'localhost:${DB_PORT}');
+        envExample = upsertEnvVar(envExample, 'DB_PORT', '${DB_PORT}');
+        fs.writeFileSync('.env.example', envExample);
+      "
       ok "Database host port set to ${DB_PORT}"
     fi
 
     if [ "$WEB_PORT" != "3000" ]; then
-      sed -i "s|127.0.0.1:3000:3000|127.0.0.1:${WEB_PORT}:3000|" docker-compose.yml
+      node -e "
+        const fs = require('fs');
+        let envExample = fs.readFileSync('.env.example', 'utf8');
+
+        const upsertEnvVar = (content, key, value) => {
+          const pattern = new RegExp('^' + key + '=.*$', 'm');
+          const line = key + '=' + value;
+          if (pattern.test(content)) {
+            return content.replace(pattern, line);
+          }
+
+          return content.replace(/^DATABASE_URL=.*$/m, (match) => match + '\n' + line);
+        };
+
+        envExample = upsertEnvVar(envExample, 'APP_PORT', '${WEB_PORT}');
+        fs.writeFileSync('.env.example', envExample);
+      "
       ok "Web server host port set to ${WEB_PORT}"
     fi
   fi
@@ -452,7 +497,7 @@ fi
 # Generate AUTH_SECRET (full mode only)
 if [ "$MODE" = "full" ]; then
   AUTH_SECRET=$(openssl rand -base64 32)
-  sed -i "s|^AUTH_SECRET=.*|AUTH_SECRET=\"${AUTH_SECRET}\"|" .env
+  sed_in_place "s|^AUTH_SECRET=.*|AUTH_SECRET=\"${AUTH_SECRET}\"|" .env
   ok "Generated AUTH_SECRET"
 fi
 

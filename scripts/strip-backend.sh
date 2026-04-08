@@ -21,6 +21,19 @@ NC='\033[0m'
 info()  { echo -e "${CYAN}ℹ${NC}  $1"; }
 ok()    { echo -e "${GREEN}✔${NC}  $1"; }
 
+# Use a backup suffix so in-place edits work on both GNU and BSD sed.
+sed_in_place() {
+  local expression="$1"
+  shift
+
+  sed -i.bak "$expression" "$@"
+
+  local file
+  for file in "$@"; do
+    rm -f -- "${file}.bak"
+  done
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATES_DIR="$SCRIPT_DIR/templates/frontend"
 
@@ -47,11 +60,11 @@ cp "$TEMPLATES_DIR/.env.example" .env.example
 cp "$TEMPLATES_DIR/Dockerfile.dev" Dockerfile.dev
 
 # Replace project name placeholder in templates
-sed -i "s/__PROJECT_NAME__/${PROJECT_NAME}/g" src/app/page.tsx src/app/layout.tsx
+sed_in_place "s/__PROJECT_NAME__/${PROJECT_NAME}/g" src/app/page.tsx src/app/layout.tsx
 
 # Apply custom web port if non-default
 if [ "$WEB_PORT" != "3000" ]; then
-  sed -i "s|127.0.0.1:3000:3000|127.0.0.1:${WEB_PORT}:3000|" docker-compose.yml
+  sed_in_place "s|127.0.0.1:3000:3000|127.0.0.1:${WEB_PORT}:3000|" docker-compose.yml
 fi
 
 ok "Frontend templates installed"
