@@ -20,7 +20,7 @@ Tailwind CSS 4, local shadcn/ui components, Lucide icons, Sonner toasts, `next-t
 
 ## Tooling
 
-Biome replaces ESLint + Prettier for linting and formatting — see [[standards#Linting and Formatting]]. Husky v9 + lint-staged for git hooks. Docker Compose for local Postgres + app runtime — see [[infra#Docker]].
+Biome replaces ESLint + Prettier for linting and formatting — see [[standards#Linting and Formatting]]. Husky v9 + lint-staged for git hooks; commitlint enforces conventional commit messages — see [[standards#Commit Message Format]]. Docker Compose for local Postgres + app runtime — see [[infra#Docker]].
 
 ## Deploy and Scaffolding
 

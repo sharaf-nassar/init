@@ -48,10 +48,21 @@ All external inputs must be validated with Zod before processing — tRPC inputs
 Biome handles both linting and formatting in a single tool. Configuration in `biome.json`.
 
 - Pre-commit hook: `lint-staged` runs `biome check --write` on staged `.ts/.tsx/.js/.jsx` and `biome format --write` on staged `.json`
+- Commit-msg hook: commitlint validates the message against [[standards#Commit Message Format]]
 - Pre-push hook: `tsc --noEmit` for full type check
 - Key rules: `noExplicitAny`, `noNonNullAssertion`, `noUnusedImports`, `noUnusedVariables`, `noDefaultExport` (with Next.js page/layout/route/config overrides), `noShadowRestrictedNames` (with `error.tsx` override), `noExcessiveCognitiveComplexity` (max 15), `noConsole` (with `scripts/` override), `noNestedTernary`, `noParameterAssign`, `useAwait`, `useErrorMessage`, `useThrowOnlyError`, `noEvolvingTypes`, `noImportCycles`, `noSecrets` (with `src/components/` override for Tailwind), `noFloatingPromises` (nursery)
 - Formatting: 2-space indent, 100-char width, double quotes, semicolons always, trailing commas everywhere
 - Scripts: `npm run lint` (check), `npm run lint:fix` (autofix), `npm run format` (format only)
+
+## Commit Message Format
+
+Every commit must follow [Conventional Commits](https://www.conventionalcommits.org/) and include a body. Enforced by commitlint via a Husky `commit-msg` hook.
+
+- Format: `type(scope): subject` — scope is optional, subject must be lowercase and imperative
+- Allowed types: `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`
+- Body is required — a blank line after the subject, then at least one line explaining **why**
+- Body lines max 200 characters; subject max 100 characters
+- Configuration in [[commitlint.config.js]]
 
 ## Claude Code Hooks
 

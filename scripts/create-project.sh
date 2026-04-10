@@ -527,7 +527,8 @@ ok "Dependencies installed"
 # ── Initial commit ───────────────────────────────────────────────────────────
 info "Creating initial commit..."
 git add -A
-git commit --quiet -m "chore: initialize ${PROJECT_NAME} from template"
+git commit --quiet -m "chore: initialize ${PROJECT_NAME} from template" \
+  -m "Scaffolded from the init starter template."
 ok "Initial commit created"
 
 # ── Done ─────────────────────────────────────────────────────────────────────
