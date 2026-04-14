@@ -65,12 +65,16 @@ npm run lint           # Biome check only
 npm run lint:fix       # Biome check + autofix
 npm run format         # Biome formatter
 npm run analyze        # Bundle size treemap
-npm run deploy:cloud   # Deploy to Vercel + Neon
 npx prisma studio      # Visual DB browser
 npx prisma db push     # Push schema to DB
 npx prisma generate    # Regenerate Prisma client
 npm run db:dev         # Create migration
 npm run db:migrate     # Apply migrations
+
+# Deployment (Oracle Cloud via Terraform)
+cd terraform && terraform init    # Initialize Terraform
+cd terraform && terraform apply   # Provision VM + networking
+./scripts/deploy.sh ubuntu@<ip>  # Deploy code to VM
 ```
 
 ---

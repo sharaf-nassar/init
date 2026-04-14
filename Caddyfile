@@ -1,0 +1,12 @@
+# Caddyfile — reverse proxy with automatic HTTPS via Let's Encrypt.
+# Deployed to /etc/caddy/Caddyfile on the production VM by cloud-init.
+# The domain value is injected by Terraform during provisioning.
+#
+# For local testing without TLS:
+#   :80 {
+#       reverse_proxy localhost:3000
+#   }
+
+{$DOMAIN:localhost} {
+    reverse_proxy localhost:3000
+}

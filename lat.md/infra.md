@@ -1,10 +1,10 @@
 # Infrastructure
 
-Docker Compose for local development, pino for structured logging, t3-env for environment validation, and runtime conventions.
+Docker Compose for local development and production, pino for structured logging, t3-env for environment validation, and runtime conventions.
 
 ## Docker
 
-Docker Compose runs PostgreSQL + Next.js dev server with localhost-only ports and container isolation.
+Docker Compose runs PostgreSQL + Next.js with localhost-only ports and container isolation. Two configurations exist: dev (bind mounts, hot reload) and production (standalone build, no mounts).
 
 - DB: `127.0.0.1:${DB_PORT:-5432}`, web: `127.0.0.1:${APP_PORT:-3000}` — do not expose beyond localhost
 - Anonymous volumes for `/app/node_modules` and `/app/.next` isolate container binaries from host — do not remove
@@ -12,6 +12,9 @@ Docker Compose runs PostgreSQL + Next.js dev server with localhost-only ports an
 - Prisma schema and `prisma.config.ts` are copied before `npm ci` so the `postinstall` script (`prisma generate`) succeeds during the build
 - Startup runs `prisma db push` only — client generation is handled at build time by `postinstall`
 - `Dockerfile.dev` uses `node:24-alpine` — runs as root for bind-mount compatibility (non-root users can't read host-owned files)
+- Production: `Dockerfile.prod` uses a 3-stage build (deps, builder, runner) with `output: "standalone"` in `next.config.js` — runner image is ~150 MB with no dev dependencies
+- Production: `docker-compose.prod.yml` adds a `migrate` service (builder target, `profiles: ["tools"]`) for `prisma migrate deploy`, log rotation on all services, and no bind mounts — code is baked into the image
+- Deploy via `scripts/deploy.sh`: pull → build → migrate → restart → health check — see [[deploy#Cloud Deployment]]
 
 ## Logging
 
@@ -37,7 +40,7 @@ All app variables validated at startup via `@t3-oss/env-nextjs` in `src/env.js`.
 
 \* Only needed for GitHub OAuth. Credentials provider works without them.
 
-Exception for direct `process.env` access: framework-level vars (`NODE_ENV`, `VERCEL_URL`, `PORT`) in framework glue code like tRPC client URL detection.
+Exception for direct `process.env` access: framework-level vars (`NODE_ENV`, `PORT`) in framework glue code like tRPC client URL detection.
 
 ## Runtime Conventions
 

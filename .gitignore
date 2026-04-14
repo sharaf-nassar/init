@@ -37,9 +37,6 @@ yarn-error.log*
 .env.*
 !.env.example
 
-# vercel
-.vercel
-
 # prisma generated client
 src/generated/
 
@@ -59,4 +56,12 @@ biome-debug-*
 
 # lat.md vector DB
 lat.md/.cache/vectors.db
+
+# terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+terraform/.terraform.lock.hcl
 

@@ -7,4 +7,4 @@ This directory defines the high-level concepts, business logic, and architecture
 - [[data]] — Database schema, ID strategy, Prisma 7 driver adapters, tRPC procedures, post router, cursor-based pagination
 - [[frontend]] — Theming, shadcn/ui, Lucide icons, Sonner toasts, nuqs URL state
 - [[infra]] — Docker, pino logging, environment variables, package management, runtime conventions, health check
-- [[deploy]] — Cloud deploy to Vercel + Neon, project bootstrap scaffolding script
+- [[deploy]] — Cloud deployment (Terraform + OCI free tier) and project bootstrap scaffolding

@@ -10,7 +10,6 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "dev": "next dev --turbo",
-    "deploy:cloud": "node ./scripts/cloud/deploy.mjs",
     "format": "biome format --write src/ scripts/",
     "lint": "biome check src/ scripts/",
     "lint:fix": "biome check --write src/ scripts/",

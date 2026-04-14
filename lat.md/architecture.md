@@ -30,7 +30,7 @@ Dual tRPC callers — a client-side React hook layer and a server-side RSC calle
 
 `src/trpc/react.tsx` exports `api` (React hooks), `TRPCReactProvider`, and type helpers.
 
-The provider wraps `QueryClientProvider` + `api.Provider`, using `httpBatchStreamLink` with SuperJSON. A `loggerLink` logs all requests in development and only errors in production — disable by removing it from the `links` array, not by changing the condition. URL detection: browser origin in the client, `VERCEL_URL` on Vercel, `localhost:PORT` fallback. QueryClient is a browser singleton; server always creates fresh instances.
+The provider wraps `QueryClientProvider` + `api.Provider`, using `httpBatchStreamLink` with SuperJSON. A `loggerLink` logs all requests in development and only errors in production — disable by removing it from the `links` array, not by changing the condition. URL detection: browser origin in the client, `localhost:PORT` fallback on the server. QueryClient is a browser singleton; server always creates fresh instances.
 
 ### Server Caller
 
@@ -70,7 +70,7 @@ Standard workflow for adding new functionality to this template.
 
 ## Project Structure
 
-Key directories and their responsibilities in the template (full mode). See [[deploy#Project Bootstrap#Frontend Mode]] for the frontend-only variant.
+Key directories and their responsibilities in the template (full mode). See [[deploy#Scaffolding#Project Bootstrap#Frontend Mode]] for the frontend-only variant.
 
 ```
 ├── prisma/schema.prisma              # Database schema
@@ -99,6 +99,10 @@ Key directories and their responsibilities in the template (full mode). See [[de
 │   │   └── api/                      # tRPC routers + context
 │   └── trpc/                         # tRPC client + server callers
 ├── scripts/                          # Bootstrap and deploy scripts
+├── terraform/                        # OCI infrastructure (Terraform)
+├── Dockerfile.prod                   # Production multi-stage build (standalone)
+├── docker-compose.prod.yml           # Production stack (web + db + migrate)
+├── Caddyfile                         # Reverse proxy template (auto-HTTPS)
 ├── .husky/                           # Git hooks
 └── docker-compose.yml                # Local dev stack
 ```

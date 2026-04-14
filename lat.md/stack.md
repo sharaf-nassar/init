@@ -22,6 +22,10 @@ Tailwind CSS 4, local shadcn/ui components, Lucide icons, Sonner toasts, `next-t
 
 Biome replaces ESLint + Prettier for linting and formatting — see [[standards#Linting and Formatting]]. Husky v9 + lint-staged for git hooks; commitlint enforces conventional commit messages — see [[standards#Commit Message Format]]. Docker Compose for local Postgres + app runtime — see [[infra#Docker]].
 
-## Deploy and Scaffolding
+## Deployment
 
-Self-contained CLI for deploying to Vercel + Neon, and a bootstrap script for scaffolding new projects from this template — see [[deploy#Deploy and Scaffolding]].
+Terraform provisions an Oracle Cloud ARM A1 VM with Docker Compose + Caddy for automatic HTTPS — see [[deploy#Cloud Deployment]].
+
+## Scaffolding
+
+Bootstrap script for scaffolding new projects from this template — see [[deploy#Scaffolding]].

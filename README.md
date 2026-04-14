@@ -85,6 +85,28 @@ lat section "auth#Development Bypass"  # Show section with refs
 lat check                          # Validate all links and code refs
 ```
 
+## Production Deployment (Oracle Cloud)
+
+Deploy the full stack to an Oracle Cloud Always Free ARM VM via Terraform:
+
+```bash
+# 1. Copy and fill in your OCI credentials + app secrets
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+
+# 2. Provision infrastructure (VM, networking, firewall)
+cd terraform
+terraform init
+terraform apply
+
+# 3. Point your domain's DNS A record to the output IP
+# Caddy handles TLS automatically via Let's Encrypt
+
+# 4. Deploy code updates
+./scripts/deploy.sh ubuntu@<vm-ip>
+```
+
+Cloud-init bootstraps the VM on first boot: installs Docker + Caddy, clones the repo, builds containers, runs migrations, and starts all services. See `terraform/terraform.tfvars.example` for all configuration options.
+
 ## Quick Start (Docker)
 
 ```bash
@@ -131,31 +153,6 @@ npx prisma db push
 # 5. Start the dev server
 npm run dev
 ```
-
-## Cloud Deploy (Vercel + Neon)
-
-This template can deploy directly from a local checkout without GitHub,
-GitLab, Bitbucket, or Azure DevOps integration.
-
-Prerequisite:
-
-```bash
-npm install -g vercel
-```
-
-Deploy the current directory:
-
-```bash
-npm run deploy:cloud
-```
-
-On first run, the command will:
-
-- prompt for a missing `VERCEL_TOKEN` and save it in user-global config
-- create or reuse a Vercel project for the current app
-- provision or reuse a Neon Postgres database through the Vercel integration
-- create missing production env vars such as `DATABASE_URL` and `AUTH_SECRET`
-- offer to configure GitHub OAuth for working production sign-in
 
 ## Environment Variables
 
@@ -209,14 +206,14 @@ npm run db:migrate   # Apply migrations (production)
 │   └── styles/globals.css        # Tailwind + brand theme
 ├── scripts/
 │   ├── create-project.sh         # Bootstrap script for new projects
-│   └── cloud/
-│       ├── config.mjs            # User-global credential persistence
-│       ├── prompts.mjs           # Interactive prompts and secret generation
-│       ├── vercel.mjs            # Vercel project, env, Neon, and deploy helpers
-│       └── deploy.mjs            # Single cloud deploy entrypoint
+│   └── deploy.sh                 # Deploy code to production VM
+├── terraform/                    # OCI infrastructure (Terraform)
 ├── biome.json                    # Linter + formatter config
 ├── Dockerfile.dev                # Dev container (Node 24 LTS)
-└── docker-compose.yml            # PostgreSQL + web (resource limits)
+├── Dockerfile.prod               # Production multi-stage build
+├── docker-compose.yml            # Dev stack (PostgreSQL + web)
+├── docker-compose.prod.yml       # Production stack (web + db + migrate)
+└── Caddyfile                     # Reverse proxy (auto-HTTPS)
 ```
 ## License
 

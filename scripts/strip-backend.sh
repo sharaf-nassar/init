@@ -45,7 +45,6 @@ rm -f src/middleware.ts src/lib/logger.ts
 rm -rf src/app/api
 rm -f src/app/_components/create-post-form.tsx
 rm -f src/app/_components/post-list.tsx
-rm -rf scripts/cloud
 
 ok "Removed backend directories and files"
 
@@ -84,7 +83,7 @@ node -e "
   const removeDevDeps = ['@types/pg', 'pino-pretty', 'prisma'];
   const removeScripts = [
     'db:dev', 'db:migrate', 'db:push', 'db:studio',
-    'deploy:cloud', 'postinstall'
+    'postinstall'
   ];
 
   for (const dep of removeDeps) delete pkg.dependencies[dep];
@@ -121,9 +120,6 @@ node -e "
   readme = readme.replace(/- \*\*tRPC 11\*\*[^\\n]*\\n/g, '');
   readme = readme.replace(/- \*\*Auth\.js v5\*\*[^\\n]*\\n/g, '');
   readme = readme.replace(/- \*\*Docker\*\*[^\\n]*PostgreSQL[^\\n]*\\n/, '- **Docker** — Dev container\\n');
-
-  // Remove Cloud Deploy section
-  readme = readme.replace(/## Cloud Deploy[\\s\\S]*?(?=\\n## )/, '');
 
   // Replace Quick Start (Docker)
   readme = readme.replace(
@@ -187,7 +183,6 @@ node -e "
   let claude = fs.readFileSync('CLAUDE.md', 'utf8');
 
   // Remove backend commands from Quick Reference
-  claude = claude.replace(/npm run deploy:cloud[^\\n]*\\n/g, '');
   claude = claude.replace(/npx prisma studio[^\\n]*\\n/g, '');
   claude = claude.replace(/npx prisma db push[^\\n]*\\n/g, '');
   claude = claude.replace(/npx prisma generate[^\\n]*\\n/g, '');
